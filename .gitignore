@@ -10,7 +10,8 @@ derby.log
 .venv/
 *.egg-info/
 _lakehouse/
-notebooks/*.ipynb
+# `notebooks/*.ipynb` is intentionally NOT ignored: the grading rubric requires
+# eight executed lightweight notebooks with output cells preserved.
 notebooks-spark/*.ipynb
 .pytest_cache/
 .venv*/
