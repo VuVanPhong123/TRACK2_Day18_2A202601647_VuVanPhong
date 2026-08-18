@@ -155,3 +155,36 @@ assert n_dates >= 7, (
 # - [ ] Silver has fewer rows than Bronze (dedup worked)
 # - [ ] Gold spans ≥ 7 dates × 3 models (slide §8 medallion contract)
 # - [ ] Cost & error_rate columns populated and non-zero
+
+# %%
+expected_models = {"claude-haiku-4-5", "claude-sonnet-4-6", "claude-opus-4-7"}
+required_gold_columns = {"p50_latency_ms", "p95_latency_ms", "cost_usd", "error_rate"}
+gold_columns_ok = required_gold_columns.issubset(set(gold_df.columns))
+gold_rows = gold_df.to_dicts()
+gold_metrics_ok = gold_columns_ok and bool(gold_rows) and all(
+    row["p50_latency_ms"] is not None
+    and row["p95_latency_ms"] is not None
+    and row["p95_latency_ms"] >= row["p50_latency_ms"]
+    and row["cost_usd"] is not None
+    and row["cost_usd"] >= 0
+    and row["error_rate"] is not None
+    and 0 <= row["error_rate"] <= 1
+    for row in gold_rows
+)
+model_set = set(gold_df.get_column("model").to_list())
+unique_pairs = gold_df.select(["date", "model"]).unique().height
+
+checks = {
+    "bronze table exists": Path(BRONZE).exists(),
+    "silver table exists": Path(SILVER).exists(),
+    "gold table exists": Path(GOLD).exists(),
+    "silver dedup reduced rows": silver_n < bronze_n,
+    "gold spans ≥ 7 dates": n_dates >= 7,
+    "gold covers exactly 3 expected models": model_set == expected_models,
+    "gold has complete date×model coverage": unique_pairs == n_dates * len(expected_models),
+    "gold p50/p95/cost/error metrics valid": gold_metrics_ok,
+}
+for k, v in checks.items():
+    print(f"  [{'PASS' if v else 'FAIL'}] {k}")
+assert all(checks.values()), "NB4 incomplete — see FAIL rows above"
+print("\nNB4 complete.")
